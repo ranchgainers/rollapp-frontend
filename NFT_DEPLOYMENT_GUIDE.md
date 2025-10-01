@@ -9,6 +9,8 @@ This guide explains how to deploy NFT contracts to Base network and integrate th
 - Private key of the deploying wallet
 - Basic understanding of smart contracts and blockchain deployment
 
+⛔️⛔️ Please don't forget to add the staking Pool contract address to the `Gata_STAKE_ADDRESS` in `packages/web/src/app/utils/index.js` for 8453 network
+
 ## Project Structure
 
 ```
@@ -22,6 +24,82 @@ packages/
         ├── utils/index.js  # Contract configurations
         └── env.ts          # Environment settings
 ```
+
+## Complete Deployment Workflow
+
+For a full platform deployment, follow this order:
+
+### 1. Deploy Core Contracts
+```bash
+# Deploy token contract
+npx hardhat deploy-token --network base
+
+# Deploy staking contract  
+npx hardhat deploy-stake --network base
+
+# Mint initial token supply
+npx hardhat mint-tokens --network base
+```
+
+### 2. Deploy NFT Collections
+```bash
+# Deploy paid NFT collection
+npx hardhat deploy-single-nft --network base
+
+# Deploy free NFT collection (optional)
+npx hardhat deploy-free-nft --network base
+```
+
+### 3. Create Staking Pools
+```bash
+# Create pool for paid NFT
+npx hardhat create-base-pool --network base
+
+# Create pool for free NFT (if deployed)
+npx hardhat create-free-nft-pool --network base
+```
+
+### 4. Update App Configuration
+- Update `env.ts` with new NFT addresses
+- Update `index.js` with contract configurations
+- Copy contract ABIs to web app
+
+### 5. Verification Commands
+```bash
+# Check token balances
+echo "User balance: $(cat token-minting.json | jq -r '.recipients[0].amount')"
+echo "Pool balance: $(cat token-minting.json | jq -r '.recipients[1].amount')"
+
+# Check NFT deployments
+echo "Paid NFT: $(cat nft-deployment.json | jq -r '.nft.address')"
+echo "Free NFT: $(cat free-nft-deployment.json | jq -r '.nft.address')"
+
+# Check pool creation
+echo "Pool 1: $(cat base-pool.json | jq -r '.poolIndex')"
+echo "Pool 2: $(cat free-nft-pool.json | jq -r '.poolIndex')"
+```
+
+## Customizing NFT Parameters
+
+### Free Minting NFT
+
+To create a free-to-mint NFT, modify the deployment script:
+
+```typescript
+// In your deployment script, the price is set in the constructor
+// For free minting, you can override the mint function or set price to 0
+```
+
+### Different Pricing
+
+Modify the `_publicSalePrice` in the contract or deployment parameters:
+
+```solidity
+uint256 public _publicSalePrice = 0; // Free
+uint256 public _publicSalePrice = 0.01 ether; // 0.01 ETH
+```
+
+## File Structure After Deployment
 
 ## Step 1: Prepare the NFT Contract
 
@@ -50,19 +128,6 @@ networks: {
     chainId: 8453
   }
 }
-```
-
-## Step 3: Create Deployment Script
-
-Create a deployment script (example: `deploy-single-nft.ts`):
-
-```typescript
-const nft = await NFTContract.deploy(
-  "Your Collection Name",
-  "SYMBOL",
-  "ipfs://your-metadata-hash/metadata.json",
-  "ipfs://your-metadata-hash/metadata.json"
-);
 ```
 
 ## Step 4: Deploy the Token Contract
@@ -149,8 +214,9 @@ await tokenContract.mint("0xRecipientAddress", amount);
    ```
 
 4. **Deploy to Base:**
+Update the `nfts.json` file with the correct NFT details and deploy the NFTs:
    ```bash
-   npx hardhat deploy-single-nft --network base
+   npx hardhat deploy-nfts --network base
    ```
 
 5. **Record the deployed address** from the output (e.g., `0xCB55Cb70ed4965Db3A219D316b6c41d4Ac49bBB8`)
